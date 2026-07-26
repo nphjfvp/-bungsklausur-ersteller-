@@ -20,31 +20,64 @@
  * veröffentlicht (unter "/<repo>/") funktioniert.
  */
 
-const CACHE = "klausur-shell-v3";
+const CACHE = "klausur-shell-v4";
 
 // "/repo/sw.js" -> "/repo"; "/sw.js" -> ""
 const BASE = self.location.pathname.replace(/\/sw\.js$/, "");
 
-// Beim Installieren nur die Einstiegsseiten vorladen; alles Weitere
-// landet beim ersten Besuch im Cache.
-const PRECACHE = [
-  `${BASE}/`,
-  `${BASE}/settings/`,
-  `${BASE}/pools/new/`,
-  `${BASE}/manifest.webmanifest`,
-  `${BASE}/icon.svg`,
-];
+// Feste Mindestausstattung, falls die Manifest-Datei aus irgendeinem
+// Grund nicht geladen werden kann.
+const FALLBACK_PRECACHE = [`${BASE}/`, `${BASE}/manifest.webmanifest`, `${BASE}/icon.svg`];
+
+/**
+ * Lädt die beim Bauen erzeugte Liste aller Routen-Dateien (HTML +
+ * Klick-Payloads). Ohne die würde ein Linkklick zu einer Seite, die in
+ * dieser Sitzung noch nie besucht wurde, offline scheitern — die Seite
+ * selbst wäre zwar bekannt, aber nicht der kleine Datenhappen, den
+ * Next.js für den Wechsel ohne komplettes Neuladen braucht.
+ */
+async function loadPrecacheList() {
+  try {
+    const response = await fetch(`${BASE}/precache-manifest.json`);
+    if (!response.ok) return FALLBACK_PRECACHE;
+    const files = await response.json();
+    return Array.isArray(files) && files.length > 0
+      ? files.map((path) => `${BASE}${path}`)
+      : FALLBACK_PRECACHE;
+  } catch {
+    return FALLBACK_PRECACHE;
+  }
+}
+
+/**
+ * Next.js legt jede Seite als ".../index.html" ab, ein echter Seiten-
+ * aufruf fragt aber die Verzeichnis-Adresse ohne "index.html" an
+ * (z.B. ".../settings/") — für den Cache sind das zwei verschiedene
+ * Schlüssel. Deshalb wird jede index.html zusätzlich unter ihrer
+ * Verzeichnis-Adresse abgelegt, damit eine echte Navigation sie findet.
+ */
+async function precacheOne(cache, url) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return;
+
+    await cache.put(url, response.clone());
+    if (url.endsWith("/index.html")) {
+      await cache.put(url.slice(0, -"index.html".length), response.clone());
+    }
+  } catch {
+    // Eine einzelne fehlende Datei darf die Installation nicht scheitern lassen.
+  }
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches
-      .open(CACHE)
-      // Einzeln, damit ein fehlender Eintrag nicht die ganze
-      // Installation scheitern lässt.
-      .then((cache) =>
-        Promise.all(PRECACHE.map((url) => cache.add(url).catch(() => undefined)))
-      )
-      .then(() => self.skipWaiting())
+    (async () => {
+      const cache = await caches.open(CACHE);
+      const list = await loadPrecacheList();
+      await Promise.all(list.map((url) => precacheOne(cache, url)));
+      await self.skipWaiting();
+    })()
   );
 });
 
