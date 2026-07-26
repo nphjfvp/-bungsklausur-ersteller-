@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Badge, Button, Card, EmptyState, Notice, ProgressBar } from "@/components/ui";
 import { db, deletePoolCascade, importPool, type PoolBundle } from "@/lib/db";
+import { examHref, poolHref } from "@/lib/routes";
 import type { PoolStatus } from "@/types";
 
 const STATUS_LABELS: Record<PoolStatus, { label: string; tone: "neutral" | "blue" | "green" | "amber" | "red" }> = {
@@ -113,7 +114,7 @@ export function PoolList() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <Link
-                        href={`/pools/${pool.id}`}
+                        href={poolHref(pool.id)}
                         className="block truncate text-lg font-semibold text-white hover:text-blue-300"
                       >
                         {pool.title}
@@ -145,13 +146,13 @@ export function PoolList() {
 
                   <div className="mt-auto flex flex-wrap gap-2 pt-4">
                     <Link
-                      href={`/pools/${pool.id}/exam`}
+                      href={examHref(pool.id)}
                       className="rounded-lg bg-blue-500 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-blue-400"
                     >
                       Klausur bauen
                     </Link>
                     <Link
-                      href={`/pools/${pool.id}`}
+                      href={poolHref(pool.id)}
                       className="rounded-lg bg-white/10 px-3 py-1.5 text-sm text-slate-100 transition hover:bg-white/20"
                     >
                       Aufgaben ansehen

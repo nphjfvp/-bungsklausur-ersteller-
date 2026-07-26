@@ -2,24 +2,39 @@
  * Service Worker für den Offline-Betrieb.
  *
  * Strategie: "stale-while-revalidate" für alles, was die App zum Laufen
- * braucht (HTML, JS, CSS, Fonts). Aufrufe an /api/ werden nie gecacht —
- * die brauchen ohnehin Netz. Dadurch startet die App im Flugmodus, und
- * das Zusammenstellen von Klausuren funktioniert vollständig, weil die
- * Daten in IndexedDB liegen.
+ * braucht (HTML, JS, CSS, Fonts). Dadurch startet die App im Flugmodus,
+ * und das Zusammenstellen von Klausuren funktioniert vollständig, weil
+ * die Daten in IndexedDB liegen.
+ *
+ * Auf GitHub Pages liegt die App unter einem Unterpfad. Der wird aus dem
+ * eigenen Ort abgeleitet, damit derselbe Worker lokal (unter "/") und
+ * veröffentlicht (unter "/<repo>/") funktioniert.
  */
 
-const CACHE = "klausur-shell-v1";
+const CACHE = "klausur-shell-v2";
 
-// Beim Installieren wird nur die Startseite vorgeladen; alles Weitere
+// "/repo/sw.js" -> "/repo"; "/sw.js" -> ""
+const BASE = self.location.pathname.replace(/\/sw\.js$/, "");
+
+// Beim Installieren nur die Einstiegsseiten vorladen; alles Weitere
 // landet beim ersten Besuch im Cache.
-const PRECACHE = ["/", "/settings", "/manifest.webmanifest", "/icon.svg"];
+const PRECACHE = [
+  `${BASE}/`,
+  `${BASE}/settings/`,
+  `${BASE}/pools/new/`,
+  `${BASE}/manifest.webmanifest`,
+  `${BASE}/icon.svg`,
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(CACHE)
-      .then((cache) => cache.addAll(PRECACHE))
-      .catch(() => undefined)
+      // Einzeln, damit ein fehlender Eintrag nicht die ganze
+      // Installation scheitern lässt.
+      .then((cache) =>
+        Promise.all(PRECACHE.map((url) => cache.add(url).catch(() => undefined)))
+      )
       .then(() => self.skipWaiting())
   );
 });
@@ -39,12 +54,7 @@ self.addEventListener("message", (event) => {
 
 function isCacheable(request) {
   if (request.method !== "GET") return false;
-
-  const url = new URL(request.url);
-  if (url.origin !== self.location.origin) return false;
-  if (url.pathname.startsWith("/api/")) return false;
-
-  return true;
+  return new URL(request.url).origin === self.location.origin;
 }
 
 self.addEventListener("fetch", (event) => {
@@ -71,9 +81,15 @@ self.addEventListener("fetch", (event) => {
       const fresh = await network;
       if (fresh) return fresh;
 
-      // Ohne Netz und ohne Kopie: bei Seitenaufrufen die Startseite zeigen.
+      // Ohne Netz und ohne Kopie: bei Seitenaufrufen die Startseite
+      // zeigen. Der Query-String zählt dabei nicht mit, sonst gälte
+      // jeder Pool als unbekannte Adresse.
       if (request.mode === "navigate") {
-        const shell = await cache.match("/");
+        const url = new URL(request.url);
+        const withoutQuery = await cache.match(url.origin + url.pathname);
+        if (withoutQuery) return withoutQuery;
+
+        const shell = await cache.match(`${BASE}/`);
         if (shell) return shell;
       }
 

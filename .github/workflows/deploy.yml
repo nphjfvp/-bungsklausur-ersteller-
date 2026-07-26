@@ -1,0 +1,68 @@
+name: Auf GitHub Pages veröffentlichen
+
+on:
+  push:
+    branches:
+      - main
+      - claude/offline-exam-generator-4r6wbv
+  # Erlaubt das Veröffentlichen von Hand über den Actions-Reiter.
+  workflow_dispatch:
+
+# Nur Leserechte am Code, dazu die Rechte, die das Pages-Deployment braucht.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Läuft ein Deployment bereits, wird es nicht abgebrochen — der neue Lauf
+# wartet, damit die veröffentlichte Seite nie halbfertig ist.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      - name: Prüfen
+        run: |
+          npm run lint
+          npm run typecheck
+
+      - name: Statische Seite bauen
+        # Die Seite liegt unter https://<user>.github.io/<repo>/ — der
+        # Unterpfad muss in Links, Manifest und Service Worker landen.
+        env:
+          NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
+        run: npm run build
+
+      - name: Jekyll abschalten
+        # Ohne diese Datei ignoriert GitHub Pages Ordner, die mit einem
+        # Unterstrich beginnen — also ausgerechnet /_next.
+        run: touch out/.nojekyll
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

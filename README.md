@@ -34,35 +34,49 @@ Musterlösung baut.
    - das **Ergebnisblatt** (nur die Resultate),
    - die **Musterlösung** (vollständiger Rechenweg, Kniffe hervorgehoben).
 
-## Schnellstart
+## Auf dem Handy nutzen (GitHub Pages)
+
+Die App wird als reine statische Seite gebaut und per GitHub Action
+veröffentlicht — kein Server, kein weiteres Konto.
+
+**Einmalig einrichten:** im Repo unter *Settings → Pages* bei **Source**
+`GitHub Actions` auswählen. Danach veröffentlicht jeder Push auf den
+Branch automatisch. Die Adresse lautet
+
+```
+https://<dein-github-name>.github.io/-bungsklausur-ersteller-/
+```
+
+Diese Adresse auf dem Handy öffnen und über das Browser-Menü
+„Installieren“ bzw. „Zum Home-Bildschirm hinzufügen“ ablegen. Danach hast
+du ein App-Icon, und die App startet auch ohne Verbindung.
+
+> Der OpenRouter-Key wird **in der App** unter *Einstellungen* eingetragen
+> und bleibt in deinem Browser. Er landet nie im Repository und nie in der
+> veröffentlichten Seite — auch wenn die Adresse öffentlich erreichbar ist,
+> kann niemand auf deine Rechnung Aufgaben erzeugen.
+
+## Lokal entwickeln
 
 ```bash
 npm install
 npm run dev      # http://localhost:3000
 ```
 
-Danach unter **Einstellungen** einen [OpenRouter](https://openrouter.ai)-Key
-eintragen. Alternativ serverseitig in `.env`:
+Den Static-Export so bauen und ansehen, wie er später veröffentlicht wird:
 
 ```bash
-cp .env.example .env
-# OPENROUTER_API_KEY=sk-or-v1-…
+npm run build            # erzeugt out/
+npx serve out            # oder ein beliebiger statischer Webserver
 ```
 
-Ist der Key auf dem Server hinterlegt, laufen alle Modellaufrufe über
-`/api/openrouter` und der Key verlässt den Server nie. Trägst du ihn stattdessen
-in der App ein, spricht der Browser direkt mit OpenRouter.
-
-Für den produktiven Betrieb (und damit der Service Worker aktiv wird):
-
-```bash
-npm run build && npm start
-```
+Der Service Worker ist im Entwicklungsmodus absichtlich abgeschaltet —
+sonst bekämst du beim Weiterentwickeln ständig alte Fassungen aus dem
+Zwischenspeicher.
 
 ## Offline-Betrieb
 
-Die App ist eine PWA — im Browser-Menü „Installieren“ bzw. „Zum Startbildschirm
-hinzufügen“ wählen. Danach funktionieren ohne Internet:
+Nach dem ersten Aufruf funktionieren ohne Internet:
 
 - Fragenpools ansehen, filtern, durchsuchen, Aufgaben aussortieren
 - Klausuren zusammenstellen
@@ -70,7 +84,7 @@ hinzufügen“ wählen. Danach funktionieren ohne Internet:
 
 Eine Verbindung braucht **nur** das Erzeugen neuer Aufgaben und die
 Gegenprüfung. Sämtliche Daten liegen in IndexedDB; die PDF-Erzeugung läuft
-vollständig im Browser (jsPDF + KaTeX), ohne Server.
+vollständig im Browser (jsPDF + KaTeX).
 
 ## Synchronisierung über mehrere Geräte
 
@@ -93,11 +107,10 @@ lokal.
 
 ```
 src/
-  app/                     Seiten (App Router)
-    api/openrouter/        Proxy für den serverseitigen Key
+  app/                     Seiten (App Router, Static Export)
     pools/new/             Assistent zum Anlegen eines Pools
-    pools/[poolId]/        Poolansicht
-    pools/[poolId]/exam/   Klausur-Baukasten (läuft offline)
+    pool/                  Poolansicht      (/pool/?id=…)
+    pool/exam/             Klausur-Baukasten (/pool/exam/?id=…, offline)
     settings/              Key, Modelle, Synchronisierung
   lib/
     ai/                    Prompts, Analyse, Generierung, Gegenprüfung, Ablauf
@@ -106,6 +119,8 @@ src/
     sync/                  Firestore-Abgleich (optional)
     db.ts                  IndexedDB via Dexie, Export/Import
     latex.ts               Markdown + LaTeX → HTML (KaTeX)
+    routes.ts              Adressen der Pool-Seiten
+    basePath.ts            Unterpfad für GitHub Pages
   components/              UI-Bausteine
   types/                   Datenmodell
 ```
@@ -120,3 +135,11 @@ Ein Pool mit 60 Aufgaben und eingeschalteter Gegenprüfung bedeutet grob 20–30
 Generierungsaufrufe plus 60 Prüfaufrufe. Für einen ersten Versuch lohnt sich ein
 kleiner Zielwert (etwa 20 Aufgaben) und ein günstiges Prüfmodell. Nachlegen geht
 später jederzeit gezielt pro Aufgabentyp.
+
+## Warum die Pool-Adressen einen Query-String haben
+
+Ein Static Export muss alle Seiten zur Bauzeit kennen. Pool-IDs entstehen
+aber erst im Browser, wenn du einen Pool anlegst — eine Seite pro Pool
+lässt sich also nicht vorbauen. Deshalb `/pool/?id=…` statt `/pool/<id>`.
+Die Adressen bildet `src/lib/routes.ts`; wer sie ändern will, muss nur
+dort hin.

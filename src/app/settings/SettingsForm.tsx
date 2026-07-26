@@ -12,7 +12,6 @@ import {
   TextInput,
   Toggle,
 } from "@/components/ui";
-import { resetServerKeyCache } from "@/lib/ai/callModel";
 import { getSettings, saveSettings } from "@/lib/db";
 import {
   FIRESTORE_RULES,
@@ -35,7 +34,6 @@ const EMPTY_FIREBASE: FirebaseConfig = {
 export function SettingsForm() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [firebase, setFirebase] = useState<FirebaseConfig>(EMPTY_FIREBASE);
-  const [serverKey, setServerKey] = useState(false);
   const [account, setAccount] = useState<SyncAccount | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [report, setReport] = useState<SyncReport | null>(null);
@@ -49,13 +47,6 @@ export function SettingsForm() {
       setFirebase(stored.firebase ?? EMPTY_FIREBASE);
 
       try {
-        const res = await fetch("/api/openrouter");
-        setServerKey(Boolean((await res.json())?.serverKeyAvailable));
-      } catch {
-        setServerKey(false);
-      }
-
-      try {
         setAccount(await currentAccount());
       } catch {
         setAccount(null);
@@ -66,7 +57,6 @@ export function SettingsForm() {
   async function persist(patch: Partial<Settings>) {
     const next = await saveSettings(patch);
     setSettings(next);
-    resetServerKeyCache();
     setMessage("Gespeichert.");
     setError(null);
   }
@@ -109,16 +99,8 @@ export function SettingsForm() {
           drucken geht auch ohne.
         </p>
 
-        {serverKey ? (
-          <Notice tone="info">
-            Auf dem Server ist bereits ein Key hinterlegt (<code>OPENROUTER_API_KEY</code>).
-            Ein eigener Key hier ist optional und hat Vorrang.
-          </Notice>
-        ) : null}
-
         <Field
           label="API-Key"
-          className="mt-4"
           hint={
             <>
               Kostenlos anlegbar unter openrouter.ai. Der Key wird im Browser gespeichert und

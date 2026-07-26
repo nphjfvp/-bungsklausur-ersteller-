@@ -21,6 +21,7 @@ import {
 import { canGenerate } from "@/lib/ai/callModel";
 import { buildPool, type BuildResult, type ProgressUpdate } from "@/lib/ai/pipeline";
 import { DEFAULT_CHECKER_MODEL, DEFAULT_GENERATOR_MODEL, db, getSettings, newId } from "@/lib/db";
+import { examHref, poolHref } from "@/lib/routes";
 import type { Difficulty, GenerationMode, Pool, SourceDoc } from "@/types";
 
 const MODE_OPTIONS: { value: GenerationMode; title: string; description: string }[] = [
@@ -371,10 +372,10 @@ export function NewPoolWizard() {
             ) : null}
 
             <div className="flex gap-2">
-              <Button variant="primary" onClick={() => router.push(`/pools/${poolId}/exam`)}>
+              <Button variant="primary" onClick={() => router.push(examHref(poolId))}>
                 Klausur bauen
               </Button>
-              <Button onClick={() => router.push(`/pools/${poolId}`)}>Aufgaben ansehen</Button>
+              <Button onClick={() => router.push(poolHref(poolId))}>Aufgaben ansehen</Button>
             </div>
           </div>
         ) : null}

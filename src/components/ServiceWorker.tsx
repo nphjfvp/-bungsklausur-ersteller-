@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { withBasePath } from "@/lib/basePath";
 
 /**
  * Meldet den Service Worker an und zeigt an, wenn das Gerät offline ist —
@@ -12,8 +13,13 @@ export function ServiceWorker() {
 
   useEffect(() => {
     if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
+      // Worker und Geltungsbereich müssen den Unterpfad enthalten,
+      // unter dem die App auf GitHub Pages liegt.
       navigator.serviceWorker
-        .register("/sw.js", { scope: "/", updateViaCache: "none" })
+        .register(withBasePath("/sw.js"), {
+          scope: withBasePath("/"),
+          updateViaCache: "none",
+        })
         .catch(() => undefined);
     }
 
