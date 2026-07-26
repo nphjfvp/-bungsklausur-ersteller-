@@ -55,7 +55,11 @@ export async function analyzeDocuments(
   const response = await callModelJson<AnalyzeResponse>(messages, {
     model,
     temperature: 0.2,
-    maxTokens: 16000,
+    // Großzügig bemessen: bei viel Material und vielen extrahierten
+    // Aufgaben ist die Antwort schnell umfangreich. callModelJson fängt
+    // ein Abschneiden zwar automatisch per Fortsetzung ab, aber je
+    // seltener das nötig ist, desto schneller und günstiger läuft es.
+    maxTokens: 32000,
     signal,
   });
 

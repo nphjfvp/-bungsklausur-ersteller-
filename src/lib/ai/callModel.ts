@@ -43,13 +43,51 @@ export async function callModel(
   });
 }
 
-/** Wie callModel, aber mit JSON-Modus und geparster Antwort. */
+/**
+ * Bei großem Material (viele oder lange Dokumente) reicht das Token-
+ * Limit einer Antwort manchmal nicht — das Modell bricht das JSON
+ * mitten im Wort ab. Statt dann komplett aufzugeben, wird das Modell
+ * gebeten, exakt an der Abbruchstelle weiterzuschreiben; die Bruchstücke
+ * werden aneinandergehängt und neu geparst. Erst wenn das mehrfach
+ * scheitert, wird der Fehler nach oben gereicht.
+ */
+const MAX_CONTINUATIONS = 2;
+
+const CONTINUE_PROMPT =
+  "Deine letzte Antwort wurde mitten im JSON abgeschnitten. Setze EXAKT an der " +
+  "Abbruchstelle fort — keine Wiederholung des bisherigen Textes, keine Einleitung, " +
+  "kein Codezaun. Schreibe nur den fehlenden Rest, bis das JSON-Objekt vollständig " +
+  "geschlossen ist.";
+
+/** Wie callModel, aber mit JSON-Modus, geparster Antwort und Fortsetzung bei Abbruch. */
 export async function callModelJson<T>(
   messages: ChatMessage[],
   options: ChatOptions
 ): Promise<T> {
-  const raw = await callModel(messages, { ...options, json: true });
-  return parseJsonResponse<T>(raw);
+  let combined = "";
+  let conversation = messages;
+
+  for (let attempt = 0; ; attempt++) {
+    const isFirstAttempt = attempt === 0;
+    const raw = await callModel(conversation, {
+      ...options,
+      json: isFirstAttempt,
+      // Beim Fortsetzen zählt Wortgenauigkeit mehr als Kreativität.
+      temperature: isFirstAttempt ? options.temperature : 0,
+    });
+    combined += raw;
+
+    try {
+      return parseJsonResponse<T>(combined);
+    } catch (error) {
+      if (attempt >= MAX_CONTINUATIONS) throw error;
+      conversation = [
+        ...conversation,
+        { role: "assistant", content: raw },
+        { role: "user", content: CONTINUE_PROMPT },
+      ];
+    }
+  }
 }
 
 /** Prüft, ob überhaupt generiert werden kann. */
