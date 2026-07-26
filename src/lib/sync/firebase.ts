@@ -70,20 +70,51 @@ export interface SyncAccount {
   displayName: string | null;
 }
 
-export async function signIn(): Promise<SyncAccount> {
+/**
+ * Als PWA installierte Seiten laufen in einem eigenen Fenster mit
+ * abgetrenntem Speicher — dort verliert ein Popup-Login regelmäßig
+ * seinen Zwischenzustand ("missing initial state",
+ * "cancelled-popup-request"). Redirect vermeidet das Popup komplett:
+ * die Seite navigiert kurz zu Google und wieder zurück. Das ist der von
+ * Google/Firebase empfohlene Weg für genau diese Umgebung, deshalb wird
+ * er hier immer verwendet, nicht nur als Rückfall.
+ */
+export async function signIn(): Promise<void> {
   const config = await resolveConfig();
   if (!config) throw new Error("Keine Firebase-Konfiguration hinterlegt.");
 
   const { auth } = await getFirebase(config);
-  const instance = auth.getAuth();
   const provider = new auth.GoogleAuthProvider();
-  const credential = await auth.signInWithPopup(instance, provider);
+  // Die Seite verlässt sich hiernach — es gibt bewusst keinen Rückgabewert.
+  // Das Ergebnis wird nach der Rückkehr über completeRedirectSignIn()
+  // abgeholt.
+  await auth.signInWithRedirect(auth.getAuth(), provider);
+}
 
-  return {
-    uid: credential.user.uid,
-    email: credential.user.email,
-    displayName: credential.user.displayName,
-  };
+/**
+ * Nach der Rückkehr von Google aufrufen (z.B. beim Laden der
+ * Einstellungsseite). Liefert null, wenn gerade keine Anmeldung im Gang
+ * war oder der Rücksprung nicht verarbeitet werden konnte — dann bleibt
+ * der Nutzer einfach abgemeldet, statt dass die Seite abstürzt.
+ */
+export async function completeRedirectSignIn(): Promise<SyncAccount | null> {
+  const config = await resolveConfig();
+  if (!config) return null;
+
+  const { auth } = await getFirebase(config);
+
+  try {
+    const credential = await auth.getRedirectResult(auth.getAuth());
+    if (!credential?.user) return null;
+    return {
+      uid: credential.user.uid,
+      email: credential.user.email,
+      displayName: credential.user.displayName,
+    };
+  } catch {
+    // z.B. wenn der Browser den Zwischenzustand nicht behalten konnte.
+    return null;
+  }
 }
 
 export async function signOut(): Promise<void> {

@@ -16,6 +16,7 @@ import { ModelPicker } from "@/components/ModelPicker";
 import { getSettings, saveSettings } from "@/lib/db";
 import {
   FIRESTORE_RULES,
+  completeRedirectSignIn,
   configFromEnv,
   currentAccount,
   signIn,
@@ -49,7 +50,9 @@ export function SettingsForm() {
       setFirebase(stored.firebase ?? EMPTY_FIREBASE);
 
       try {
-        setAccount(await currentAccount());
+        // Kommt die Seite gerade von Google zurück, hier abholen — sonst
+        // ganz normal prüfen, ob schon eine Sitzung besteht.
+        setAccount((await completeRedirectSignIn()) ?? (await currentAccount()));
       } catch {
         setAccount(null);
       }
@@ -236,11 +239,13 @@ export function SettingsForm() {
                 <Button
                   disabled={!syncConfigured}
                   onClick={() =>
-                    void signIn()
-                      .then(setAccount)
-                      .catch((cause) =>
-                        setError(cause instanceof Error ? cause.message : String(cause))
-                      )
+                    // signIn() navigiert die Seite zu Google weg — ein
+                    // Ergebnis gibt es hier nicht mehr, das holt der
+                    // useEffect oben nach der Rückkehr per
+                    // completeRedirectSignIn() ab.
+                    void signIn().catch((cause) =>
+                      setError(cause instanceof Error ? cause.message : String(cause))
+                    )
                   }
                 >
                   Mit Google anmelden
