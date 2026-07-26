@@ -1,17 +1,26 @@
 /**
  * Service Worker für den Offline-Betrieb.
  *
- * Strategie: "stale-while-revalidate" für alles, was die App zum Laufen
- * braucht (HTML, JS, CSS, Fonts). Dadurch startet die App im Flugmodus,
- * und das Zusammenstellen von Klausuren funktioniert vollständig, weil
- * die Daten in IndexedDB liegen.
+ * Zwei Strategien, je nach Anfrageart:
+ *
+ * - Seitenaufrufe (Navigation, z.B. beim Öffnen der App) laufen
+ *   NETWORK-FIRST: Ist Netz da, wird immer die aktuelle Seite geholt.
+ *   Erst wenn das fehlschlägt, springt der Zwischenspeicher ein — das
+ *   ist der Offline-Fall. Installierte Apps werden von manchen
+ *   Betriebssystemen beim "Schließen" nur pausiert statt neu geladen;
+ *   ohne Network-First würden Nutzer dann dauerhaft an einer alten
+ *   Version hängen bleiben, selbst nach einem Update.
+ * - Alles andere (JS, CSS, Bilder) bleibt STALE-WHILE-REVALIDATE: Next.js
+ *   hängt an jeden Dateinamen einen Inhalts-Hash — dieselbe Adresse hat
+ *   also immer denselben Inhalt, aggressives Zwischenspeichern ist hier
+ *   ohne Risiko und macht die App spürbar schneller.
  *
  * Auf GitHub Pages liegt die App unter einem Unterpfad. Der wird aus dem
  * eigenen Ort abgeleitet, damit derselbe Worker lokal (unter "/") und
  * veröffentlicht (unter "/<repo>/") funktioniert.
  */
 
-const CACHE = "klausur-shell-v2";
+const CACHE = "klausur-shell-v3";
 
 // "/repo/sw.js" -> "/repo"; "/sw.js" -> ""
 const BASE = self.location.pathname.replace(/\/sw\.js$/, "");
@@ -57,46 +66,69 @@ function isCacheable(request) {
   return new URL(request.url).origin === self.location.origin;
 }
 
+/** Bei Offline-Rückfall zählt der Query-String nicht mit, sonst gälte
+ * jeder Pool (?id=…) als unbekannte Adresse. */
+async function matchIgnoringQuery(cache, request) {
+  const url = new URL(request.url);
+  return (
+    (await cache.match(url.origin + url.pathname)) ??
+    (await cache.match(`${BASE}/`)) ??
+    undefined
+  );
+}
+
+async function handleNavigation(request, cache) {
+  try {
+    const fresh = await fetch(request);
+    if (fresh?.ok) {
+      cache.put(request, fresh.clone());
+      return fresh;
+    }
+  } catch {
+    // kein Netz — weiter zum Zwischenspeicher
+  }
+
+  const cached = await matchIgnoringQuery(cache, request);
+  if (cached) return cached;
+
+  return new Response("Offline und nicht im Zwischenspeicher.", {
+    status: 503,
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
+}
+
+async function handleStaleWhileRevalidate(request, cache, event) {
+  const cached = await cache.match(request);
+
+  const network = fetch(request)
+    .then((response) => {
+      if (response?.ok) cache.put(request, response.clone());
+      return response;
+    })
+    .catch(() => null);
+
+  if (cached) {
+    // Im Hintergrund aktualisieren, sofort die Kopie ausliefern. Der
+    // Worker darf dafür nicht vorzeitig beendet werden.
+    event.waitUntil(network);
+    return cached;
+  }
+
+  return (await network) ?? new Response("Offline und nicht im Zwischenspeicher.", {
+    status: 503,
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (!isCacheable(request)) return;
 
   event.respondWith(
-    caches.open(CACHE).then(async (cache) => {
-      const cached = await cache.match(request);
-
-      const network = fetch(request)
-        .then((response) => {
-          if (response && response.ok) cache.put(request, response.clone());
-          return response;
-        })
-        .catch(() => null);
-
-      if (cached) {
-        // Im Hintergrund aktualisieren, sofort die Kopie ausliefern.
-        event.waitUntil(network);
-        return cached;
-      }
-
-      const fresh = await network;
-      if (fresh) return fresh;
-
-      // Ohne Netz und ohne Kopie: bei Seitenaufrufen die Startseite
-      // zeigen. Der Query-String zählt dabei nicht mit, sonst gälte
-      // jeder Pool als unbekannte Adresse.
-      if (request.mode === "navigate") {
-        const url = new URL(request.url);
-        const withoutQuery = await cache.match(url.origin + url.pathname);
-        if (withoutQuery) return withoutQuery;
-
-        const shell = await cache.match(`${BASE}/`);
-        if (shell) return shell;
-      }
-
-      return new Response("Offline und nicht im Zwischenspeicher.", {
-        status: 503,
-        headers: { "Content-Type": "text/plain; charset=utf-8" },
-      });
-    })
+    caches.open(CACHE).then((cache) =>
+      request.mode === "navigate"
+        ? handleNavigation(request, cache)
+        : handleStaleWhileRevalidate(request, cache, event)
+    )
   );
 });
