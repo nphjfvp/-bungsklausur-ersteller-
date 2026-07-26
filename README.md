@@ -100,6 +100,24 @@ an. Der Abgleich läuft in beide Richtungen, pro Datensatz gewinnt die neuere
 Fassung (`updatedAt`), gelöschte Einträge hinterlassen Grabsteine, damit sie
 nicht von einem anderen Gerät zurückkommen.
 
+Damit die Konfiguration nicht auf jedem Gerät neu eingetippt werden muss, kann
+sie fest in den Build wandern: im Repo unter *Settings → Secrets and variables →
+Actions → Variables* diese vier **Variables** anlegen:
+
+| Name | Wert aus der Firebase-Konsole |
+| --- | --- |
+| `FIREBASE_API_KEY` | `apiKey` |
+| `FIREBASE_AUTH_DOMAIN` | `authDomain` |
+| `FIREBASE_PROJECT_ID` | `projectId` |
+| `FIREBASE_APP_ID` | `appId` |
+
+Danach zeigt die App nur noch „Mit Google anmelden“ — kein Abtippen mehr.
+
+> Diese vier Werte sind **keine Geheimnisse**. Sie stecken in jeder
+> Firebase-Web-App sichtbar im ausgelieferten JavaScript; abgesichert wird über
+> die Firestore-Regeln und die Anmeldung, nicht über Geheimhaltung. Deshalb
+> *Variables* und nicht *Secrets*.
+
 Ohne Firebase-Konfiguration wird das SDK nie geladen — die App bleibt dann rein
 lokal.
 
@@ -119,6 +137,7 @@ src/
     sync/                  Firestore-Abgleich (optional)
     db.ts                  IndexedDB via Dexie, Export/Import
     latex.ts               Markdown + LaTeX → HTML (KaTeX)
+    ai/models.ts           Modellliste von OpenRouter + Empfehlungen
     routes.ts              Adressen der Pool-Seiten
     basePath.ts            Unterpfad für GitHub Pages
   components/              UI-Bausteine
@@ -128,6 +147,24 @@ src/
 Der Ablauf einer Pool-Erzeugung steckt in `src/lib/ai/pipeline.ts`: Analyse →
 Generierung (parallelisiert, in Stapeln) → Gegenprüfung. Jeder Zwischenstand
 wird sofort gespeichert, ein Abbruch verliert also nichts.
+
+## Modellauswahl
+
+Die Auswahlliste wird zur Laufzeit von OpenRouter geholt (`/api/v1/models`) und
+einen Tag lang zwischengespeichert — neue Modelle tauchen also von selbst auf,
+ohne dass am Code etwas geändert werden muss. Angezeigt werden Preis,
+Kontextfenster und ob das Modell Bilder lesen kann. Ist OpenRouter nicht
+erreichbar, greift der Zwischenspeicher und zuletzt eine kleine eingebaute
+Liste in `src/lib/ai/models.ts`.
+
+Eigene Modell-IDs lassen sich unten im Auswahlfeld direkt eintippen. Steht eine
+ID nicht in der geladenen Liste, weist die App darauf hin — das ist entweder ein
+Tippfehler oder ein sehr neues Modell.
+
+**Bildfähigkeit beachten:** Gescannte oder abfotografierte Klausuren werden als
+Seitenbilder an das Modell geschickt. Ein reines Text-Modell (etwa DeepSeek R1)
+kann sie nicht lesen; die App warnt, sobald Bilder im Material sind und das
+gewählte Modell keine verarbeiten kann.
 
 ## Kosten im Blick behalten
 

@@ -12,9 +12,11 @@ import {
   TextInput,
   Toggle,
 } from "@/components/ui";
+import { ModelPicker } from "@/components/ModelPicker";
 import { getSettings, saveSettings } from "@/lib/db";
 import {
   FIRESTORE_RULES,
+  configFromEnv,
   currentAccount,
   signIn,
   signOut,
@@ -77,7 +79,11 @@ export function SettingsForm() {
 
   if (!settings) return <p className="text-sm text-slate-400">Wird geladen …</p>;
 
-  const syncConfigured = Boolean(firebase.apiKey && firebase.projectId);
+  // Ist Firebase beim Bauen mitgegeben worden, muss auf keinem Gerät
+  // mehr etwas eingetippt werden.
+  const envConfig = configFromEnv();
+  const manualConfigured = Boolean(firebase.apiKey && firebase.projectId);
+  const syncConfigured = manualConfigured || envConfig !== null;
 
   return (
     <div className="space-y-6">
@@ -120,22 +126,17 @@ export function SettingsForm() {
         </Field>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <Field label="Standardmodell zum Erzeugen">
-            <TextInput
-              value={settings.generatorModel}
-              onChange={(event) =>
-                setSettings({ ...settings, generatorModel: event.target.value })
-              }
-            />
-          </Field>
-          <Field label="Standardmodell zum Gegenprüfen">
-            <TextInput
-              value={settings.checkerModel}
-              onChange={(event) =>
-                setSettings({ ...settings, checkerModel: event.target.value })
-              }
-            />
-          </Field>
+          <ModelPicker
+            label="Standardmodell zum Erzeugen"
+            value={settings.generatorModel}
+            onChange={(generatorModel) => setSettings({ ...settings, generatorModel })}
+            hint="Vorbelegung für neue Fragenpools."
+          />
+          <ModelPicker
+            label="Standardmodell zum Gegenprüfen"
+            value={settings.checkerModel}
+            onChange={(checkerModel) => setSettings({ ...settings, checkerModel })}
+          />
         </div>
 
         <Button
@@ -169,28 +170,44 @@ export function SettingsForm() {
 
         {settings.syncEnabled ? (
           <div className="mt-4 space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              {(
-                [
-                  ["apiKey", "API-Key"],
-                  ["projectId", "Projekt-ID"],
-                  ["authDomain", "Auth-Domain"],
-                  ["appId", "App-ID"],
-                ] as const
-              ).map(([key, label]) => (
-                <Field key={key} label={label}>
-                  <TextInput
-                    value={firebase[key]}
-                    onChange={(event) =>
-                      setFirebase({ ...firebase, [key]: event.target.value })
-                    }
-                  />
-                </Field>
-              ))}
-            </div>
+            {envConfig ? (
+              <Notice tone="success" title="Firebase ist bereits eingebaut">
+                Projekt <strong>{envConfig.projectId}</strong> kam mit dem Build mit. Du musst
+                hier nichts eintragen — nur einmal anmelden.
+              </Notice>
+            ) : null}
+
+            <details className="rounded-lg border border-white/10 bg-slate-900/40 p-3" open={!envConfig}>
+              <summary className="cursor-pointer text-sm font-medium text-slate-200">
+                {envConfig
+                  ? "Abweichendes Firebase-Projekt verwenden"
+                  : "Firebase-Konfiguration eintragen"}
+              </summary>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                {(
+                  [
+                    ["apiKey", "API-Key"],
+                    ["projectId", "Projekt-ID"],
+                    ["authDomain", "Auth-Domain"],
+                    ["appId", "App-ID"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <Field key={key} label={label}>
+                    <TextInput
+                      value={firebase[key]}
+                      onChange={(event) =>
+                        setFirebase({ ...firebase, [key]: event.target.value })
+                      }
+                    />
+                  </Field>
+                ))}
+              </div>
+              <Button className="mt-3" onClick={() => void persist({ firebase })}>
+                Konfiguration speichern
+              </Button>
+            </details>
 
             <div className="flex flex-wrap gap-2">
-              <Button onClick={() => void persist({ firebase })}>Konfiguration speichern</Button>
 
               {account ? (
                 <>

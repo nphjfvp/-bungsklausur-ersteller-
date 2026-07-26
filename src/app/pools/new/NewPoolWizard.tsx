@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { DifficultyRange } from "@/components/DifficultyRange";
+import { ModelPicker } from "@/components/ModelPicker";
 import { UploadZone } from "@/components/UploadZone";
 import {
   Badge,
@@ -12,7 +13,6 @@ import {
   Field,
   Notice,
   ProgressBar,
-  Select,
   Spinner,
   TextArea,
   TextInput,
@@ -43,15 +43,6 @@ const MODE_OPTIONS: { value: GenerationMode; title: string; description: string 
     description:
       "Deine Dokumente dienen nur als Vorbild für Typ, Stil und Niveau. Im Pool landen ausschließlich neu geschriebene Aufgaben.",
   },
-];
-
-/** Gängige OpenRouter-Modelle; freie Eingabe bleibt über die Einstellungen möglich. */
-const MODEL_CHOICES = [
-  { value: "anthropic/claude-sonnet-4.5", label: "Claude Sonnet 4.5 (ausgewogen)" },
-  { value: "anthropic/claude-opus-4.1", label: "Claude Opus 4.1 (stärkste Mathematik)" },
-  { value: "openai/gpt-5", label: "GPT-5" },
-  { value: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro" },
-  { value: "deepseek/deepseek-r1", label: "DeepSeek R1 (günstig, rechenstark)" },
 ];
 
 export function NewPoolWizard() {
@@ -268,34 +259,20 @@ export function NewPoolWizard() {
               onChange={(event) => setSubject(event.target.value)}
             />
           </Field>
-          <Field label="Modell zum Erzeugen">
-            <Select
-              value={generatorModel}
-              onChange={(event) => setGeneratorModel(event.target.value)}
-            >
-              {MODEL_CHOICES.map((choice) => (
-                <option key={choice.value} value={choice.value}>
-                  {choice.label}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field
+          <ModelPicker
+            label="Modell zum Erzeugen"
+            value={generatorModel}
+            onChange={setGeneratorModel}
+            needsVision={docs.some((doc) => doc.images.length > 0)}
+            hint="Analysiert das Material und schreibt die Aufgaben."
+          />
+          <ModelPicker
             label="Modell zum Gegenprüfen"
+            value={checkerModel}
+            onChange={setCheckerModel}
+            disabled={!crossCheck}
             hint="Bewusst ein anderes Modell wählen — sonst wiederholt es die eigenen Fehler."
-          >
-            <Select
-              value={checkerModel}
-              disabled={!crossCheck}
-              onChange={(event) => setCheckerModel(event.target.value)}
-            >
-              {MODEL_CHOICES.map((choice) => (
-                <option key={choice.value} value={choice.value}>
-                  {choice.label}
-                </option>
-              ))}
-            </Select>
-          </Field>
+          />
           <Field
             label="Zusätzliche Vorgaben"
             className="sm:col-span-2"

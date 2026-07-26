@@ -1,6 +1,7 @@
 "use client";
 
 import Dexie, { type EntityTable } from "dexie";
+import { DEFAULT_CHECKER, DEFAULT_GENERATOR } from "./ai/models";
 import type {
   Exam,
   Pool,
@@ -12,9 +13,9 @@ import type {
 
 /**
  * Alle Nutzdaten liegen in IndexedDB. Das ist die einzige Quelle der
- * Wahrheit — der Server wird ausschließlich zum Weiterreichen von
- * KI-Anfragen gebraucht. Ohne Netz funktioniert deshalb alles außer
- * dem Generieren neuer Fragen.
+ * Wahrheit — einen Server gibt es nicht. Ohne Netz funktioniert deshalb
+ * alles außer dem Erzeugen neuer Aufgaben, das direkt aus dem Browser
+ * an OpenRouter geht.
  */
 
 /** Vermerk, welche Frage in welcher Klausur schon dran war. */
@@ -61,8 +62,10 @@ export const db = new ExamDB();
 
 // ── Einstellungen ────────────────────────────────────────────
 
-export const DEFAULT_GENERATOR_MODEL = "anthropic/claude-sonnet-4.5";
-export const DEFAULT_CHECKER_MODEL = "google/gemini-2.5-pro";
+// Eine Quelle der Wahrheit für die Vorbelegung — die Modellliste selbst
+// steht in lib/ai/models.ts.
+export const DEFAULT_GENERATOR_MODEL = DEFAULT_GENERATOR;
+export const DEFAULT_CHECKER_MODEL = DEFAULT_CHECKER;
 
 const DEFAULT_SETTINGS: Settings = {
   id: "settings",
