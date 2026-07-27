@@ -21,6 +21,7 @@ import { assembleExam, randomSeed, saveExam, type AssembleResult } from "@/lib/e
 import { downloadSheet, warmUpPdfEngine } from "@/lib/exam/pdf";
 import { renderAllSheets, type SheetKind } from "@/lib/exam/render";
 import { homeHref, poolHref } from "@/lib/routes";
+import { ExamHistory } from "./ExamHistory";
 import type {
   ExamBlueprintRow,
   ExamConfig,
@@ -374,6 +375,8 @@ export function ExamBuilder({ poolId }: { poolId: string }) {
           </div>
         </Card>
       ) : null}
+
+      <ExamHistory poolId={poolId} />
     </div>
   );
 }
