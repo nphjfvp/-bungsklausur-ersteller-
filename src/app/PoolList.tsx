@@ -1,11 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Badge, Button, Card, EmptyState, Notice, ProgressBar } from "@/components/ui";
 import { db, deletePoolCascade, importPool, type PoolBundle } from "@/lib/db";
-import { examHref, poolHref } from "@/lib/routes";
+import { examHref, newPoolHref, poolHref } from "@/lib/routes";
 import type { PoolStatus } from "@/types";
 
 const STATUS_LABELS: Record<PoolStatus, { label: string; tone: "neutral" | "blue" | "green" | "amber" | "red" }> = {
@@ -82,12 +81,12 @@ export function PoolList() {
             }}
           />
           <Button onClick={() => importRef.current?.click()}>Pool importieren</Button>
-          <Link
-            href="/pools/new"
+          <a
+            href={newPoolHref()}
             className="inline-flex items-center rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-400"
           >
             Neuer Pool
-          </Link>
+          </a>
         </div>
       </div>
 
@@ -99,7 +98,7 @@ export function PoolList() {
       ) : pools.length === 0 ? (
         <EmptyState title="Noch kein Fragenpool vorhanden">
           Lade eine Übungsklausur hoch, und die App leitet daraus einen ganzen Aufgabenvorrat
-          ab. <Link href="/pools/new" className="text-blue-300 underline">Jetzt anlegen</Link>
+          ab. <a href={newPoolHref()} className="text-blue-300 underline">Jetzt anlegen</a>
         </EmptyState>
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2">
@@ -113,12 +112,12 @@ export function PoolList() {
                 <Card className="flex h-full flex-col">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <Link
+                      <a
                         href={poolHref(pool.id)}
                         className="block truncate text-lg font-semibold text-white hover:text-blue-300"
                       >
                         {pool.title}
-                      </Link>
+                      </a>
                       <p className="truncate text-sm text-slate-400">{pool.subject}</p>
                     </div>
                     <Badge tone={status.tone}>{status.label}</Badge>
@@ -145,18 +144,18 @@ export function PoolList() {
                   ) : null}
 
                   <div className="mt-auto flex flex-wrap gap-2 pt-4">
-                    <Link
+                    <a
                       href={examHref(pool.id)}
                       className="rounded-lg bg-blue-500 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-blue-400"
                     >
                       Klausur bauen
-                    </Link>
-                    <Link
+                    </a>
+                    <a
                       href={poolHref(pool.id)}
                       className="rounded-lg bg-white/10 px-3 py-1.5 text-sm text-slate-100 transition hover:bg-white/20"
                     >
                       Aufgaben ansehen
-                    </Link>
+                    </a>
                     <Button
                       size="sm"
                       variant="ghost"

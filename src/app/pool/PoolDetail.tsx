@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { QuestionCard } from "@/components/QuestionCard";
@@ -18,7 +17,7 @@ import {
 import { topUpTaskType } from "@/lib/ai/pipeline";
 import { db, deleteWithTombstone, exportPool } from "@/lib/db";
 import { downloadBlob } from "@/lib/exam/pdf";
-import { examHref } from "@/lib/routes";
+import { examHref, homeHref } from "@/lib/routes";
 import { DIFFICULTY_LABELS, type Difficulty, type Question, type TaskType } from "@/types";
 
 type SortKey = "type" | "difficulty" | "newest";
@@ -105,9 +104,9 @@ export function PoolDetail({ poolId }: { poolId: string }) {
   if (pool === null) {
     return (
       <EmptyState title="Dieser Fragenpool existiert nicht (mehr)">
-        <Link href="/" className="text-blue-300 underline">
+        <a href={homeHref()} className="text-blue-300 underline">
           Zurück zur Übersicht
-        </Link>
+        </a>
       </EmptyState>
     );
   }
@@ -129,12 +128,12 @@ export function PoolDetail({ poolId }: { poolId: string }) {
 
         <div className="flex flex-wrap gap-2">
           <Button onClick={() => void handleExport()}>Als Datei exportieren</Button>
-          <Link
+          <a
             href={examHref(poolId)}
             className="inline-flex items-center rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-400"
           >
             Klausur bauen
-          </Link>
+          </a>
         </div>
       </div>
 

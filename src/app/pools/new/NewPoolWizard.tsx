@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { DifficultyRange } from "@/components/DifficultyRange";
 import { ModelPicker } from "@/components/ModelPicker";
 import { UploadZone } from "@/components/UploadZone";
@@ -21,7 +19,7 @@ import {
 import { canGenerate } from "@/lib/ai/callModel";
 import { buildPool, type BuildResult, type ProgressUpdate } from "@/lib/ai/pipeline";
 import { DEFAULT_CHECKER_MODEL, DEFAULT_GENERATOR_MODEL, db, getSettings, newId } from "@/lib/db";
-import { examHref, poolHref } from "@/lib/routes";
+import { examHref, poolHref, settingsHref } from "@/lib/routes";
 import type { Difficulty, GenerationMode, Pool, SourceDoc } from "@/types";
 
 const MODE_OPTIONS: { value: GenerationMode; title: string; description: string }[] = [
@@ -46,8 +44,6 @@ const MODE_OPTIONS: { value: GenerationMode; title: string; description: string 
 ];
 
 export function NewPoolWizard() {
-  const router = useRouter();
-
   const [poolId] = useState(() => newId("pool"));
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("");
@@ -147,7 +143,7 @@ export function NewPoolWizard() {
       {keyReady === false ? (
         <Notice tone="warn" title="Kein OpenRouter-Key hinterlegt">
           Zum Erzeugen von Aufgaben braucht die App einen Key.{" "}
-          <Link href="/settings">Jetzt in den Einstellungen eintragen.</Link>
+          <a href={settingsHref()}>Jetzt in den Einstellungen eintragen.</a>
         </Notice>
       ) : null}
 
@@ -349,10 +345,10 @@ export function NewPoolWizard() {
             ) : null}
 
             <div className="flex gap-2">
-              <Button variant="primary" onClick={() => router.push(examHref(poolId))}>
+              <Button variant="primary" onClick={() => { window.location.href = examHref(poolId); }}>
                 Klausur bauen
               </Button>
-              <Button onClick={() => router.push(poolHref(poolId))}>Aufgaben ansehen</Button>
+              <Button onClick={() => { window.location.href = poolHref(poolId); }}>Aufgaben ansehen</Button>
             </div>
           </div>
         ) : null}

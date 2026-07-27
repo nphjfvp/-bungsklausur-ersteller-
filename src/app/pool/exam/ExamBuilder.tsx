@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { DifficultyRangeCompact } from "@/components/DifficultyRange";
@@ -21,7 +20,7 @@ import { db } from "@/lib/db";
 import { assembleExam, randomSeed, saveExam, type AssembleResult } from "@/lib/exam/assemble";
 import { downloadSheet, warmUpPdfEngine } from "@/lib/exam/pdf";
 import { renderAllSheets, type SheetKind } from "@/lib/exam/render";
-import { poolHref } from "@/lib/routes";
+import { homeHref, poolHref } from "@/lib/routes";
 import type {
   ExamBlueprintRow,
   ExamConfig,
@@ -175,9 +174,9 @@ export function ExamBuilder({ poolId }: { poolId: string }) {
   if (pool === null) {
     return (
       <EmptyState title="Dieser Fragenpool existiert nicht (mehr)">
-        <Link href="/" className="text-blue-300 underline">
+        <a href={homeHref()} className="text-blue-300 underline">
           Zurück zur Übersicht
-        </Link>
+        </a>
       </EmptyState>
     );
   }
@@ -186,9 +185,9 @@ export function ExamBuilder({ poolId }: { poolId: string }) {
     <div className="space-y-6">
       <div>
         <p className="text-sm text-slate-400">
-          <Link href={poolHref(poolId)} className="hover:text-slate-200">
+          <a href={poolHref(poolId)} className="hover:text-slate-200">
             {pool.title}
-          </Link>
+          </a>
         </p>
         <h1 className="text-2xl font-semibold text-white">Klausur bauen</h1>
         <p className="mt-1 text-sm text-slate-400">
@@ -234,9 +233,9 @@ export function ExamBuilder({ poolId }: { poolId: string }) {
 
         {rows.length === 0 ? (
           <EmptyState title="Dieser Pool enthält noch keine Aufgabentypen">
-            <Link href={poolHref(poolId)} className="text-blue-300 underline">
+            <a href={poolHref(poolId)} className="text-blue-300 underline">
               Zum Pool
-            </Link>
+            </a>
           </EmptyState>
         ) : (
           <div className="space-y-2">

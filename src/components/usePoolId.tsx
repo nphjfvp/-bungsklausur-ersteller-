@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { POOL_ID_PARAM } from "@/lib/routes";
+import { homeHref, POOL_ID_PARAM } from "@/lib/routes";
 import { EmptyState } from "./ui";
 
 /** Liest die Pool-ID aus dem Query-String. */
@@ -17,9 +16,9 @@ export function usePoolId(): string | null {
 export function MissingPoolId() {
   return (
     <EmptyState title="Kein Fragenpool ausgewählt">
-      <Link href="/" className="text-blue-300 underline">
+      <a href={homeHref()} className="text-blue-300 underline">
         Zurück zur Übersicht
-      </Link>
+      </a>
     </EmptyState>
   );
 }
