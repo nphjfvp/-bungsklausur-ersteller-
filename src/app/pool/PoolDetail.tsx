@@ -17,7 +17,7 @@ import {
 import { topUpTaskType } from "@/lib/ai/pipeline";
 import { db, deleteWithTombstone, exportPool } from "@/lib/db";
 import { downloadBlob } from "@/lib/exam/pdf";
-import { examHref, homeHref } from "@/lib/routes";
+import { examHref, homeHref, practiceHref } from "@/lib/routes";
 import { DIFFICULTY_LABELS, type Difficulty, type Question, type TaskType } from "@/types";
 
 type SortKey = "type" | "difficulty" | "newest";
@@ -164,6 +164,12 @@ export function PoolDetail({ poolId }: { poolId: string }) {
 
         <div className="flex flex-wrap gap-2">
           <Button onClick={() => void handleExport()}>Als Datei exportieren</Button>
+          <a
+            href={practiceHref(poolId)}
+            className="inline-flex items-center rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-white/20"
+          >
+            🚦 Üben
+          </a>
           <a
             href={examHref(poolId)}
             className="inline-flex items-center rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-400"

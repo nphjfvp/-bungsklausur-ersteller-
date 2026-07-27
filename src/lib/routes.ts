@@ -33,3 +33,7 @@ export function poolHref(poolId: string): string {
 export function examHref(poolId: string): string {
   return withBasePath(`/pool/exam/?${POOL_ID_PARAM}=${encodeURIComponent(poolId)}`);
 }
+
+export function practiceHref(poolId: string): string {
+  return withBasePath(`/pool/practice/?${POOL_ID_PARAM}=${encodeURIComponent(poolId)}`);
+}

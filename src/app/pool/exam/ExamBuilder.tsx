@@ -20,7 +20,8 @@ import { db } from "@/lib/db";
 import { assembleExam, randomSeed, saveExam, type AssembleResult } from "@/lib/exam/assemble";
 import { downloadSheet, warmUpPdfEngine } from "@/lib/exam/pdf";
 import { renderAllSheets, type SheetKind } from "@/lib/exam/render";
-import { homeHref, poolHref } from "@/lib/routes";
+import { trickWeakness } from "@/lib/practice/mastery";
+import { homeHref, poolHref, practiceHref } from "@/lib/routes";
 import { ExamHistory } from "./ExamHistory";
 import type {
   ExamBlueprintRow,
@@ -78,18 +79,24 @@ export function ExamBuilder({ poolId }: { poolId: string }) {
     void warmUpPdfEngine().catch(() => undefined);
   }, []);
 
-  // Vorbelegung: je Aufgabentyp eine Aufgabe, über die Spanne des Pools.
+  // Vorbelegung: je Aufgabentyp mindestens eine Aufgabe — Typen mit
+  // Kniffen, die im Übungsmodus noch überwiegend auf Rot stehen, werden
+  // dabei bevorzugt (bis zu 3 statt 1), damit gerade das noch Unsichere
+  // in der Klausur öfter vorkommt.
   const rows = useMemo(
     () =>
       rowsOverride ??
-      taskTypes.map((taskType) => ({
-        taskTypeId: taskType.id,
-        taskTypeName: taskType.name,
-        count: 1,
-        difficultyFrom: pool?.config.difficultyFrom ?? 4,
-        difficultyTo: pool?.config.difficultyTo ?? 6,
-      })),
-    [rowsOverride, taskTypes, pool]
+      taskTypes.map((taskType) => {
+        const weakness = trickWeakness(questions, taskType.id);
+        return {
+          taskTypeId: taskType.id,
+          taskTypeName: taskType.name,
+          count: 1 + Math.round(weakness * 2),
+          difficultyFrom: pool?.config.difficultyFrom ?? 4,
+          difficultyTo: pool?.config.difficultyTo ?? 6,
+        };
+      }),
+    [rowsOverride, taskTypes, pool, questions]
   );
 
   const title = titleOverride ?? (pool ? `${pool.title} — Klausur` : "");
@@ -190,7 +197,15 @@ export function ExamBuilder({ poolId }: { poolId: string }) {
             {pool.title}
           </a>
         </p>
-        <h1 className="text-2xl font-semibold text-white">Klausur bauen</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-2xl font-semibold text-white">Klausur bauen</h1>
+          <a
+            href={practiceHref(poolId)}
+            className="inline-flex items-center rounded-lg bg-white/10 px-3 py-1.5 text-sm font-medium text-slate-100 transition hover:bg-white/20"
+          >
+            🚦 Üben
+          </a>
+        </div>
         <p className="mt-1 text-sm text-slate-400">
           Läuft vollständig offline: Aufgaben werden aus dem vorhandenen Pool gezogen und die
           PDFs direkt hier im Browser gesetzt.

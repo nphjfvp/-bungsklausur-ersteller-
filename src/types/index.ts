@@ -146,8 +146,34 @@ export interface Question {
   crossCheck?: CrossCheck;
   /** Vom Nutzer aussortierte Fragen bleiben erhalten, werden aber nie gezogen. */
   archived: boolean;
+  /**
+   * Ampelstatus aus dem Übungsmodus: rot = noch nicht beherrscht,
+   * grün = zuverlässig richtig gelöst. Steuert, welche Aufgabentypen
+   * beim Klausur-Bauen bevorzugt werden.
+   */
+  mastery: MasteryLevel;
   createdAt: string;
   updatedAt: string;
+}
+
+export type MasteryLevel = "red" | "yellow" | "green";
+
+export const MASTERY_ORDER: MasteryLevel[] = ["red", "yellow", "green"];
+
+export const MASTERY_LABELS: Record<MasteryLevel, string> = {
+  red: "Noch nicht sicher",
+  yellow: "Wird schon besser",
+  green: "Sicher beherrscht",
+};
+
+export function promoteMastery(level: MasteryLevel): MasteryLevel {
+  const index = MASTERY_ORDER.indexOf(level);
+  return MASTERY_ORDER[Math.min(index + 1, MASTERY_ORDER.length - 1)];
+}
+
+export function demoteMastery(level: MasteryLevel): MasteryLevel {
+  const index = MASTERY_ORDER.indexOf(level);
+  return MASTERY_ORDER[Math.max(index - 1, 0)];
 }
 
 // ── Pool ─────────────────────────────────────────────────────

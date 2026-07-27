@@ -158,6 +158,7 @@ export function normalizeQuestion(
     sourceDocId: context.sourceDocId,
     tags: normalizeTags(raw.tags),
     archived: false,
+    mastery: "red",
     createdAt: now,
     updatedAt: now,
   };
