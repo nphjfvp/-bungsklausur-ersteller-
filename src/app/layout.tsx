@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { DiagnosticsOverlay } from "@/components/DiagnosticsOverlay";
 import { Nav } from "@/components/Nav";
 import { ServiceWorker } from "@/components/ServiceWorker";
 import "katex/dist/katex.min.css";
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ServiceWorker />
         <Nav />
         <main className="mx-auto w-full max-w-6xl px-4 pb-24 pt-6 sm:px-6">{children}</main>
+        <DiagnosticsOverlay />
       </body>
     </html>
   );
