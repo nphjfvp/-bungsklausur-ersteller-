@@ -31,6 +31,7 @@ export function PoolDetail({ poolId }: { poolId: string }) {
   const [topUpCount, setTopUpCount] = useState(5);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const pool = useLiveQuery(() => db.pools.get(poolId), [poolId]);
   const taskTypes = useLiveQuery(
@@ -92,6 +93,41 @@ export function PoolDetail({ poolId }: { poolId: string }) {
     } finally {
       setTopUpFor(null);
     }
+  }
+
+  function toggleSelect(question: Question) {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(question.id)) next.delete(question.id);
+      else next.add(question.id);
+      return next;
+    });
+  }
+
+  function selectAllVisible() {
+    setSelected(new Set(visible.map((question) => question.id)));
+  }
+
+  function clearSelection() {
+    setSelected(new Set());
+  }
+
+  async function bulkArchive(archived: boolean) {
+    const ids = [...selected];
+    if (ids.length === 0) return;
+    const updatedAt = new Date().toISOString();
+    await Promise.all(ids.map((id) => db.questions.update(id, { archived, updatedAt })));
+    setMessage(`${ids.length} Aufgabe(n) ${archived ? "aussortiert" : "zurückgeholt"}.`);
+    clearSelection();
+  }
+
+  async function bulkDelete() {
+    const ids = [...selected];
+    if (ids.length === 0) return;
+    if (!window.confirm(`${ids.length} Aufgabe(n) endgültig löschen?`)) return;
+    await Promise.all(ids.map((id) => deleteWithTombstone("questions", id)));
+    setMessage(`${ids.length} Aufgabe(n) gelöscht.`);
+    clearSelection();
   }
 
   async function handleExport() {
@@ -249,27 +285,58 @@ export function PoolDetail({ poolId }: { poolId: string }) {
         {visible.length === 0 ? (
           <EmptyState title="Keine Aufgaben für diese Auswahl" />
         ) : (
-          <div className="space-y-4">
-            {visible.map((question) => (
-              <QuestionCard
-                key={question.id}
-                question={question}
-                onArchiveToggle={(target) =>
-                  void db.questions.update(target.id, {
-                    archived: !target.archived,
-                    updatedAt: new Date().toISOString(),
-                  })
-                }
-                onDelete={(target) => {
-                  if (window.confirm("Diese Aufgabe endgültig löschen?")) {
-                    // Mit Grabstein, damit andere Geräte beim Abgleich
-                    // nicht die gelöschte Aufgabe zurückschieben.
-                    void deleteWithTombstone("questions", target.id);
+          <>
+            <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+              <Button size="sm" variant="ghost" onClick={selectAllVisible}>
+                Alle sichtbaren auswählen
+              </Button>
+              {selected.size > 0 ? (
+                <>
+                  <span className="text-slate-400">{selected.size} ausgewählt</span>
+                  <Button size="sm" onClick={() => void bulkArchive(true)}>
+                    Aussortieren
+                  </Button>
+                  <Button size="sm" onClick={() => void bulkArchive(false)}>
+                    Zurückholen
+                  </Button>
+                  <Button size="sm" variant="danger" onClick={() => void bulkDelete()}>
+                    Löschen
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={clearSelection}>
+                    Auswahl aufheben
+                  </Button>
+                </>
+              ) : null}
+            </div>
+            <div className="space-y-4">
+              {visible.map((question, questionIndex) => (
+                <QuestionCard
+                  key={question.id}
+                  question={question}
+                  index={questionIndex}
+                  selected={selected.has(question.id)}
+                  onToggleSelect={toggleSelect}
+                  onSave={(target) => {
+                    const { id, ...changes } = target;
+                    void db.questions.update(id, changes);
+                  }}
+                  onArchiveToggle={(target) =>
+                    void db.questions.update(target.id, {
+                      archived: !target.archived,
+                      updatedAt: new Date().toISOString(),
+                    })
                   }
-                }}
-              />
-            ))}
-          </div>
+                  onDelete={(target) => {
+                    if (window.confirm("Diese Aufgabe endgültig löschen?")) {
+                      // Mit Grabstein, damit andere Geräte beim Abgleich
+                      // nicht die gelöschte Aufgabe zurückschieben.
+                      void deleteWithTombstone("questions", target.id);
+                    }
+                  }}
+                />
+              ))}
+            </div>
+          </>
         )}
       </Card>
     </div>
