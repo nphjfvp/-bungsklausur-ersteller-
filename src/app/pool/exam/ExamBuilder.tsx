@@ -113,6 +113,39 @@ export function ExamBuilder({ poolId }: { poolId: string }) {
     [rows]
   );
 
+  /**
+   * Verteilt eine gewünschte Gesamtzahl proportional zu den bisherigen
+   * Anteilen der Zeilen neu (Rest nach größtem Bruchteil), statt einfach
+   * jede Zeile gleich zu erhöhen — die bisherige Gewichtung (z.B. mehr
+   * für noch unsichere Kniff-Typen) bleibt so erhalten.
+   */
+  const setTargetCount = useCallback(
+    (target: number) => {
+      const base = rows;
+      if (base.length === 0) return;
+
+      const clamped = Math.max(0, target);
+      const totalWeight = base.reduce((sum, row) => sum + row.count, 0);
+      const shares = base.map((row) =>
+        totalWeight > 0 ? (row.count / totalWeight) * clamped : clamped / base.length
+      );
+      const floors = shares.map((share) => Math.floor(share));
+      let remainder = clamped - floors.reduce((sum, value) => sum + value, 0);
+
+      const order = shares
+        .map((share, index) => ({ index, frac: share - Math.floor(share) }))
+        .sort((a, b) => b.frac - a.frac);
+
+      const counts = [...floors];
+      for (let k = 0; k < order.length && remainder > 0; k++, remainder--) {
+        counts[order[k].index]++;
+      }
+
+      setRowsOverride(base.map((row, index) => ({ ...row, count: counts[index] })));
+    },
+    [rows]
+  );
+
   const available = useMemo(() => {
     const map = new Map<string, Question[]>();
     for (const question of questions) {
@@ -244,7 +277,19 @@ export function ExamBuilder({ poolId }: { poolId: string }) {
       <Card>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-white">Zusammensetzung</h2>
-          <span className="text-sm text-slate-400">{plannedCount} Aufgaben geplant</span>
+          <label className="flex items-center gap-2 text-sm text-slate-400">
+            <input
+              type="number"
+              min={0}
+              max={200}
+              value={plannedCount}
+              disabled={rows.length === 0}
+              aria-label="Aufgaben insgesamt"
+              onChange={(event) => setTargetCount(Number(event.target.value) || 0)}
+              className="w-16 rounded-lg border border-white/10 bg-slate-900/70 px-2 py-1.5 text-sm text-slate-100 focus:border-blue-400 focus:outline-none"
+            />
+            Aufgaben geplant — wird proportional auf die Typen verteilt
+          </label>
         </div>
 
         {rows.length === 0 ? (
